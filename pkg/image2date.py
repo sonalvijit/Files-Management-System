@@ -1,3 +1,4 @@
+# Changes Image name to date of creation yyyy-mm-dd_hh-mm-ss 
 import os
 from datetime import datetime
 
