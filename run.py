@@ -15,31 +15,31 @@ def classify_files_in_folder(folder_path, include_subfolders=False):
     Returns:
         dict: A dictionary with file extensions as keys and their counts as values.
     """
-    # Dictionary to hold counts of each file type
     file_counts = defaultdict(int)
+
+    def recursive_scan(path):
+        try:
+            for item in os.listdir(path):
+                item_path = os.path.join(path, item)
+                if os.path.isfile(item_path):
+                    _, extension = os.path.splitext(item)
+                    extension = extension.lower()
+                    file_counts[extension] += 1
+                elif os.path.isdir(item_path):
+                    recursive_scan(item_path)
+        except Exception as e:
+            print(f"Error scanning folder {path}: {e}")
 
     try:
         if include_subfolders:
-            # Walk through the directory and its subdirectories
-            for root, _, files in os.walk(folder_path):
-                for file in files:
-                    _, extension = os.path.splitext(file)
-                    extension = extension.lower()
-                    file_counts[extension] += 1
+            recursive_scan(folder_path)
         else:
-            # List all items in the folder
             for item in os.listdir(folder_path):
                 item_path = os.path.join(folder_path, item)
-                
-                # Process only files, skip directories
                 if os.path.isfile(item_path):
-                    # Extract the file extension (e.g., '.txt')
                     _, extension = os.path.splitext(item)
-                    # Normalize the extension to lowercase (e.g., '.TXT' -> '.txt')
                     extension = extension.lower()
-                    # Increment the count for this file type
                     file_counts[extension] += 1
-
     except Exception as e:
         print(f"Error scanning folder: {e}")
 
@@ -55,34 +55,83 @@ def copy_files_to_folders(folder_path, destination_base):
         destination_base (str): The base path where categorized folders will be created.
     """
     prefixes = ("2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024", "DecoPic", "DOC", "IMG")
+    
+    # Helper function to count all files for progress bar initialization
+    def count_files(path):
+        total_files = 0
+        for root, _, files in os.walk(path):
+            total_files += len(files)
+        return total_files
 
-    try:
-        files = [item for item in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, item))]
-
-        with tqdm(total=len(files), desc="Copying Files", unit="file") as progress_bar:
+    # Recursive file copy function with progress bar updates
+    def recursive_copy(path, progress_bar):
+        try:
+            files = [item for item in os.listdir(path) if os.path.isfile(os.path.join(path, item))]
             for item in files:
-                item_path = os.path.join(folder_path, item)
-
+                item_path = os.path.join(path, item)
                 if item.startswith(prefixes):
-                    # Get file creation time
                     creation_time = datetime.fromtimestamp(os.path.getctime(item_path))
                     folder_name = creation_time.strftime("%m-%Y")
                 else:
-                    # Files without matching prefixes go to 'unknown' folder
                     folder_name = "unknown"
-
                 destination_folder = os.path.join(destination_base, folder_name)
-
-                # Create the destination folder if it doesn't exist
                 os.makedirs(destination_folder, exist_ok=True)
-
-                # Copy the file to the destination folder
                 shutil.copy2(item_path, os.path.join(destination_folder, item))
+                progress_bar.update(1)  # Update the progress bar after copying a file
 
-                progress_bar.update(1)
+            subfolders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
+            for subfolder in subfolders:
+                recursive_copy(os.path.join(path, subfolder), progress_bar)
 
+        except Exception as e:
+            print(f"Error copying files from {path}: {e}")
+
+    try:
+        if os.path.isdir(folder_path):
+            total_files = count_files(folder_path)
+            with tqdm(total=total_files, desc="Copying Files", unit="file") as progress_bar:
+                recursive_copy(folder_path, progress_bar)
     except Exception as e:
-        print(f"Error copying files: {e}")
+        print(f"Error during file copy: {e}")
+
+# def copy_files_to_folders(folder_path, destination_base):
+#     """
+#     Copies files starting with specific prefixes to folders named by their creation date (MM-YYYY).
+#     Files not matching the prefixes are copied to an 'unknown' folder.
+
+#     Args:
+#         folder_path (str): The path of the folder to scan.
+#         destination_base (str): The base path where categorized folders will be created.
+#     """
+#     prefixes = ("2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024", "DecoPic", "DOC", "IMG")
+
+#     def recursive_copy(path):
+#         try:
+#             files = [item for item in os.listdir(path) if os.path.isfile(os.path.join(path, item))]
+#             for item in files:
+#                 item_path = os.path.join(path, item)
+#                 if item.startswith(prefixes):
+#                     creation_time = datetime.fromtimestamp(os.path.getctime(item_path))
+#                     folder_name = creation_time.strftime("%m-%Y")
+#                 else:
+#                     folder_name = "unknown"
+#                 destination_folder = os.path.join(destination_base, folder_name)
+#                 os.makedirs(destination_folder, exist_ok=True)
+#                 shutil.copy2(item_path, os.path.join(destination_folder, item))
+
+#             subfolders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
+#             for subfolder in subfolders:
+#                 recursive_copy(os.path.join(path, subfolder))
+
+#         except Exception as e:
+#             print(f"Error copying files from {path}: {e}")
+
+#     try:
+#         if os.path.isdir(folder_path):
+#             with tqdm(desc="Copying Files", unit="file") as progress_bar:
+#                 recursive_copy(folder_path)
+#     except Exception as e:
+#         print(f"Error during file copy: {e}")
 
 if __name__ == "__main__":
     folder_path = input("Enter the folder path to scan: ").strip()
