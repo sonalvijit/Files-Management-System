@@ -28,5 +28,5 @@ def rename_images(directory):
             os.rename(file_path, renamed_file_path)
 
 # Specify the directory containing the images
-directory_path = r"E:\T2024\12-2015"  # Replace with your directory path
-rename_images(directory_path)
+# directory_path = r"E:\T2024\12-2015"  # Replace with your directory path
+# rename_images(directory_path)
